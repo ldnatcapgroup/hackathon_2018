@@ -23,23 +23,18 @@ public class Handler implements RequestHandler<Map<String, Object>, String> {
 
 	private static final Logger LOG = Logger.getLogger(Handler.class);
 	private static String accessToken = "OAuth 00D0x0000000QNK!ARcAQJLKTMkFzNFQYcy1T0GfJf14AXJrBua14ZsJPYRY2No7c5QXZC47FTcB6ciaHF3AN6AwhCtgt1VemriK6HD6L_5LBFRc";
-	// private static String vAddress = "https://www.google.com";
 	private static String vAddress = "https://xn--capgroupfull-r19f.cs95.my.salesforce.com/services/data/v36.0/sobjects/Notification__c";
 
 	@Override
 	public String handleRequest(Map<String, Object> input, Context context) {
 		LOG.info("received: " + input);
 		HttpURLConnection conn;
-		String json = "{\"Active__c\" : \"true\",\"Description__c\" : \"Test4\",\"Start_Date__c\" : \"2018-08-22\"}";
+		String json = "{\"Active__c\" : \"true\",\"Description__c\" : \"Test5\",\"Start_Date__c\" : \"2018-08-23\"}";
 		
 		try {
 			
 	        URL url = new URL(vAddress);
 	        conn = (HttpURLConnection) url.openConnection();
-	        //conn.setRequestMethod("GET");
-	        
-	        // conn.setConnectTimeout(1000);
-	        // conn.connect();
             
 	        conn.setRequestProperty("Authorization", accessToken);
 	        conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
@@ -50,8 +45,6 @@ public class Handler implements RequestHandler<Map<String, Object>, String> {
 	        os.write(json.getBytes("UTF-8"));
 	        os.close();
 	        	       
-	        
-	        // int rc = conn.getResponseCode();
 	        BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
 			String inputLine;
 			StringBuffer response = new StringBuffer();
