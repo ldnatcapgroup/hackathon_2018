@@ -24,6 +24,19 @@
       <artifactId>aws-lambda-java-log4j</artifactId>
       <version>1.0.0</version>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/com.amazonaws/aws-java-sdk-rekognition -->
+	<dependency>
+	    <groupId>com.amazonaws</groupId>
+	    <artifactId>aws-java-sdk-rekognition</artifactId>
+	    <version>1.11.392</version>
+	</dependency>
+    <!-- https://mvnrepository.com/artifact/com.amazonaws/aws-java-sdk -->
+<dependency>
+    <groupId>com.amazonaws</groupId>
+    <artifactId>aws-java-sdk</artifactId>
+    <version>1.11.392</version>
+</dependency>
+    
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-core</artifactId>
