@@ -1,117 +1,137 @@
 package com.serverless;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.Statement;
-
-import org.json.simple.JSONObject;
+import com.amazonaws.services.lambda.runtime.Context;
+import com.amazonaws.services.lambda.runtime.LambdaLogger;
+import com.amazonaws.services.rekognition.AmazonRekognition;
+import com.amazonaws.services.rekognition.AmazonRekognitionClientBuilder;
+import com.amazonaws.services.rekognition.model.Image;
+import com.amazonaws.services.rekognition.model.S3Object;
+import com.amazonaws.services.rekognition.model.BoundingBox;
+import com.amazonaws.services.rekognition.model.CompareFacesMatch;
+import com.amazonaws.services.rekognition.model.CompareFacesRequest;
+import com.amazonaws.services.rekognition.model.CompareFacesResult;
+import com.amazonaws.services.rekognition.model.ComparedFace;
+import java.util.List;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
+import com.amazonaws.util.IOUtils;
 
 public class RekognitionService {
 	
-		// private static final Logger LOG = Logger.getLogger(Handler.class);
-		private static String accessToken = "OAuth 00D0x0000000QNK!ARcAQJLKTMkFzNFQYcy1T0GfJf14AXJrBua14ZsJPYRY2No7c5QXZC47FTcB6ciaHF3AN6AwhCtgt1VemriK6HD6L_5LBFRc";
-		private static String sfdcUrl = "https://xn--capgroupfull-r19f.cs95.my.salesforce.com/services/data/v36.0/sobjects/Notification__c";
-		// private static String aamUrl = "http://capitalgroup.demdex.net/event?d_uuid=48515798915548649800232462535070166586&d_sid=11940189&d_rtbd=json";
-		private static String ldn_uuid = "d_uuid=48515798915548649800232462535070166586";
-		private static String tsy_uuid = "d_uuid=";
-		private static String sid = "&d_sid=11940189";
-		private static String sma = "11953713";
-		private static String fid = "11953717";
-		private static String aamBaseUrl = "http://capitalgroup.demdex.net/event?";
-		private static String sfdcStr = " has attended our booth in the Morningstart Investment conference requesting additional information about ";
-		
-		private String invokeSFDC(String name, String topic) throws IOException {
-			String noticeStr = name + sfdcStr + topic;
-			JSONObject json = new JSONObject();
-			json.put("Active__c", "true");
-			json.put("Description__c", noticeStr);
-			json.put("Start_Date__c", "2018-08-23");
-			String jsonStr = json.toString();
-			
-			System.out.println("JSON=" + json.toJSONString());
-			// String json = "{\"Active__c\" : \"true\",\"Description__c\" : \"Test6\",\"Start_Date__c\" : \"2018-08-23\"}";
-			
-			URL url = new URL(sfdcUrl);
-	        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-	        
-	        conn.setRequestProperty("Authorization", accessToken);
-	        conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
-	        conn.setRequestProperty("Accept", "application/json; charset=UTF-8");
-	        conn.setDoOutput(true);
-	        
-	        OutputStream os = conn.getOutputStream();
-	        os.write(jsonStr.getBytes("UTF-8"));
-	        os.close();
-	        	       
-	        BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-			String inputLine;
-			StringBuffer response = new StringBuffer();
-
-			while ((inputLine = in.readLine()) != null) {
-				response.append(inputLine);
-			}
-			in.close();
-			
-			return response.toString();
-		}
-
-		private String invokeAAM(String topic) throws IOException {
-			String sidStr = sid;
-			if (topic.equalsIgnoreCase("SMA")) sidStr = sid + "," + sma;
-			if (topic.equalsIgnoreCase("FID")) sidStr = sid + "," + fid;
-			String aamUrl = aamBaseUrl + ldn_uuid + sidStr;
-			
-			System.out.println("aamUrl=" + aamUrl);
-			
-			URL url = new URL(aamUrl);
-			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-			conn.setRequestMethod("GET");
-
-			int responseCode = conn.getResponseCode();
-			System.out.println("Response Code = " + responseCode);
-			
-			BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-			String inputLine;
-			StringBuffer response = new StringBuffer();
-
-			while ((inputLine = in.readLine()) != null) {
-				response.append(inputLine);
-			}
-			in.close();
-			System.out.println(response.toString());
-			return response.toString();		
-		}
-		
-		public void inYourFace(String fileName, String topic) {
-			String url = "jdbc:mysql://mysqlhackathon2018.cglflvz1bvvd.us-west-2.rds.amazonaws.com:3306";
-		    String username = "hackathon";
-		    String password = "inyourface";
-		    String lastName = "";
+	private static final String className = RekognitionService.class.getName();
 	
-		    try {
-		      Connection conn = DriverManager.getConnection(url, username, password);
-		      Statement stmt = conn.createStatement();
-		      ResultSet resultSet = stmt.executeQuery("SELECT * FROM inyourface.Contact WHERE Photo='"+fileName+"'");	      
+	LambdaLogger logger;
 	
-		      if (resultSet.next()) {
-		          lastName = resultSet.getObject("LName").toString();
-		          System.out.println(lastName);
-		        }
-		      if (lastName.length() > 0) {
-		    	  invokeSFDC(lastName, topic);
-		    	  invokeAAM(topic);
-		      }
-		    }
-		    catch (Exception e) {
-	        	e.printStackTrace();
-		    } 
-		}
+	private S3ImageService s3ImageService;
+	
+	public RekognitionService(Context context) {
+    	logger = context.getLogger();
+    	s3ImageService = new S3ImageService(context);
+	}
 
+    /*public RekognitionResult compareRegistrationImage(String bucket, String imageName) throws Exception {
+       Float similarityThreshold = 70F;
+       String sourceImage = "source.jpg";
+       String targetImage = "target.jpg";
+       ByteBuffer sourceImageBytes=null;
+       ByteBuffer targetImageBytes=null;
+
+       AmazonRekognition rekognitionClient = AmazonRekognitionClientBuilder.defaultClient();
+
+       //Load source and target images and create input parameters
+       try (InputStream inputStream = new FileInputStream(new File(sourceImage))) {
+          sourceImageBytes = ByteBuffer.wrap(IOUtils.toByteArray(inputStream));
+       }
+       catch(Exception e)
+       {
+           System.out.println("Failed to load source image " + sourceImage);
+           System.exit(1);
+       }
+       try (InputStream inputStream = new FileInputStream(new File(targetImage))) {
+           targetImageBytes = ByteBuffer.wrap(IOUtils.toByteArray(inputStream));
+       }
+       catch(Exception e)
+       {
+           System.out.println("Failed to load target images: " + targetImage);
+           System.exit(1);
+       }
+
+       Image source=new Image()
+            .withBytes(sourceImageBytes);
+       Image target=new Image()
+            .withBytes(targetImageBytes);
+
+       CompareFacesRequest request = new CompareFacesRequest()
+               .withSourceImage(source)
+               .withTargetImage(target)
+               .withSimilarityThreshold(similarityThreshold);
+       
+       // Call operation
+       CompareFacesResult compareFacesResult=rekognitionClient.compareFaces(request);
+
+
+       // Display results
+       List <CompareFacesMatch> faceDetails = compareFacesResult.getFaceMatches();
+       for (CompareFacesMatch match: faceDetails){
+         ComparedFace face= match.getFace();
+         BoundingBox position = face.getBoundingBox();
+         System.out.println("Face at " + position.getLeft().toString()
+               + " " + position.getTop()
+               + " matches with " + face.getConfidence().toString()
+               + "% confidence.");
+
+       }
+       List<ComparedFace> uncompared = compareFacesResult.getUnmatchedFaces();
+
+       System.out.println("There was " + uncompared.size()
+            + " face(s) that did not match");
+       System.out.println("Source image rotation: " + compareFacesResult.getSourceImageOrientationCorrection());
+       System.out.println("target image rotation: " + compareFacesResult.getTargetImageOrientationCorrection());
+   }*/
+    
+   public String compareRegistrationImage(String registrationFilename, Float matchAccuracy ) {
+	   final String methodName = "compareS3Image";
+	   
+	   String foundImage = "";
+	   
+       Float similarityThreshold = matchAccuracy;
+       AmazonRekognition rekognitionClient = AmazonRekognitionClientBuilder.defaultClient();
+	   
+	   S3Object source = s3ImageService.getRegistrationImageObject(registrationFilename);
+	   
+	   for (String filename : s3ImageService.listKnownImages()) {
+		   S3Object knownImage = s3ImageService.getBucketImageObject(filename);
+		   logger.log(String.format("[%s.%s]: comparing [%s] to [%s] using similarity percent [%s]\n", className, methodName, source.getName(), knownImage.getName(), similarityThreshold));
+		   
+	       CompareFacesRequest request = new CompareFacesRequest()
+	               .withSourceImage(new Image().withS3Object(source))
+	               .withTargetImage(new Image().withS3Object(knownImage))
+	               .withSimilarityThreshold(similarityThreshold);
+	       
+	       CompareFacesResult compareFacesResult = rekognitionClient.compareFaces(request);
+	       
+	       List <CompareFacesMatch> faceDetails = compareFacesResult.getFaceMatches();
+	       for (CompareFacesMatch match: faceDetails){
+	         ComparedFace face= match.getFace();
+	         BoundingBox position = face.getBoundingBox();
+	         logger.log(String.format("[%s.%s]: Face at " + position.getLeft().toString()
+	               + " " + position.getTop()
+	               + " matches with " + face.getConfidence().toString()
+	               + "percent confidence.\n", className, methodName));
+	         foundImage = filename;
+	       }
+	       List<ComparedFace> uncompared = compareFacesResult.getUnmatchedFaces();
+
+	       logger.log(String.format("[%s.%s]: There was " + uncompared.size()
+	            + " face(s) that did not match\n[%s]\n[%s]\n",className, methodName,
+	            "Source image rotation: " + compareFacesResult.getSourceImageOrientationCorrection(), 
+	            "target image rotation: " + compareFacesResult.getTargetImageOrientationCorrection()));
+	       
+		   logger.log(String.format("[%s.%s]: result of comparision [%s]\n", className, methodName, request));
+	   }
+	   
+	   return foundImage;
+   }
 }

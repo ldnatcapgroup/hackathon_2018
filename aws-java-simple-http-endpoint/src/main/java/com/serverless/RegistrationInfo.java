@@ -6,6 +6,10 @@ public class RegistrationInfo {
 	
 	public String photoName;
 	
+	public String topic;
+	
+	public Float matchPercent;
+	
 	public RegistrationInfo() {
 		
 	}
@@ -31,7 +35,21 @@ public class RegistrationInfo {
 	public void setPhotoName(String photoName) {
 		this.photoName = photoName;
 	}
-	
-	
+
+	public String getTopic() {
+		return topic;
+	}
+
+	public void setTopic(String topic) {
+		this.topic = topic;
+	}
+
+	public Float getMatchPercent() {
+		return matchPercent;
+	}
+
+	public void setMatchPercent(Float matchPercent) {
+		this.matchPercent = matchPercent;
+	}
 
 }
