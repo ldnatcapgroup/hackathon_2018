@@ -1,8 +1,11 @@
 package com.serverless;
 
+import com.amazonaws.services.lambda.runtime.Context;
+import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.rekognition.AmazonRekognition;
 import com.amazonaws.services.rekognition.AmazonRekognitionClientBuilder;
 import com.amazonaws.services.rekognition.model.Image;
+import com.amazonaws.services.rekognition.model.S3Object;
 import com.amazonaws.services.rekognition.model.BoundingBox;
 import com.amazonaws.services.rekognition.model.CompareFacesMatch;
 import com.amazonaws.services.rekognition.model.CompareFacesRequest;
@@ -15,9 +18,20 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import com.amazonaws.util.IOUtils;
 
-public class RekognitionHandler {
+public class RekognitionService {
+	
+	private static final String className = RekognitionService.class.getName();
+	
+	LambdaLogger logger;
+	
+	private S3ImageService s3ImageService;
+	
+	public RekognitionService(Context context) {
+    	logger = context.getLogger();
+    	s3ImageService = new S3ImageService(context);
+	}
 
-   public static void main(String[] args) throws Exception{
+    /*public RekognitionResult compareRegistrationImage(String bucket, String imageName) throws Exception {
        Float similarityThreshold = 70F;
        String sourceImage = "source.jpg";
        String targetImage = "target.jpg";
@@ -53,7 +67,7 @@ public class RekognitionHandler {
                .withSourceImage(source)
                .withTargetImage(target)
                .withSimilarityThreshold(similarityThreshold);
-
+       
        // Call operation
        CompareFacesResult compareFacesResult=rekognitionClient.compareFaces(request);
 
@@ -75,5 +89,49 @@ public class RekognitionHandler {
             + " face(s) that did not match");
        System.out.println("Source image rotation: " + compareFacesResult.getSourceImageOrientationCorrection());
        System.out.println("target image rotation: " + compareFacesResult.getTargetImageOrientationCorrection());
+   }*/
+    
+   public String compareRegistrationImage(String registrationFilename, Float matchAccuracy ) {
+	   final String methodName = "compareS3Image";
+	   
+	   String foundImage = "";
+	   
+       Float similarityThreshold = matchAccuracy;
+       AmazonRekognition rekognitionClient = AmazonRekognitionClientBuilder.defaultClient();
+	   
+	   S3Object source = s3ImageService.getRegistrationImageObject(registrationFilename);
+	   
+	   for (String filename : s3ImageService.listKnownImages()) {
+		   S3Object knownImage = s3ImageService.getBucketImageObject(filename);
+		   logger.log(String.format("[%s.%s]: comparing [%s] to [%s] using similarity percent [%s]\n", className, methodName, source.getName(), knownImage.getName(), similarityThreshold));
+		   
+	       CompareFacesRequest request = new CompareFacesRequest()
+	               .withSourceImage(new Image().withS3Object(source))
+	               .withTargetImage(new Image().withS3Object(knownImage))
+	               .withSimilarityThreshold(similarityThreshold);
+	       
+	       CompareFacesResult compareFacesResult = rekognitionClient.compareFaces(request);
+	       
+	       List <CompareFacesMatch> faceDetails = compareFacesResult.getFaceMatches();
+	       for (CompareFacesMatch match: faceDetails){
+	         ComparedFace face= match.getFace();
+	         BoundingBox position = face.getBoundingBox();
+	         logger.log(String.format("[%s.%s]: Face at " + position.getLeft().toString()
+	               + " " + position.getTop()
+	               + " matches with " + face.getConfidence().toString()
+	               + "percent confidence.\n", className, methodName));
+	         foundImage = filename;
+	       }
+	       List<ComparedFace> uncompared = compareFacesResult.getUnmatchedFaces();
+
+	       logger.log(String.format("[%s.%s]: There was " + uncompared.size()
+	            + " face(s) that did not match\n[%s]\n[%s]\n",className, methodName,
+	            "Source image rotation: " + compareFacesResult.getSourceImageOrientationCorrection(), 
+	            "target image rotation: " + compareFacesResult.getTargetImageOrientationCorrection()));
+	       
+		   logger.log(String.format("[%s.%s]: result of comparision [%s]\n", className, methodName, request));
+	   }
+	   
+	   return foundImage;
    }
 }

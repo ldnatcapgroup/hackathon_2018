@@ -31,7 +31,7 @@
 	    <groupId>com.amazonaws</groupId>
 	    <artifactId>aws-java-sdk-rekognition</artifactId>
 	    <version>1.11.392</version>
-      <scope>provided</scope>
+      <!-- scope>provided</scope -->
 	</dependency>
     <!-- https://mvnrepository.com/artifact/com.amazonaws/aws-java-sdk -->
 	<dependency>
