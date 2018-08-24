@@ -8,6 +8,8 @@ public class RegistrationInfoResponse {
 	
 	public String knownPhoto;
 	
+	public String registrationResponse;
+	
 	public RegistrationInfoResponse() {
 		
 	}	
@@ -42,7 +44,14 @@ public class RegistrationInfoResponse {
 	public void setKnownPhoto(String knownPhoto) {
 		this.knownPhoto = knownPhoto;
 	}
-	
+
+	public String getRegistrationResponse() {
+		return registrationResponse;
+	}
+
+	public void setRegistrationResponse(String registrationResponse) {
+		this.registrationResponse = registrationResponse;
+	}
 	
 
 }

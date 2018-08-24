@@ -13,7 +13,13 @@ import java.sql.Statement;
 
 import org.json.simple.JSONObject;
 
+import com.amazonaws.services.lambda.runtime.Context;
+import com.amazonaws.services.lambda.runtime.LambdaLogger;
+
 public class RecognitionService {
+	
+	private static final String className = RecognitionService.class.getName();
+
 	
 		// private static final Logger LOG = Logger.getLogger(Handler.class);
 		private static String accessToken = "OAuth 00D0x0000000QNK!ARcAQJLKTMkFzNFQYcy1T0GfJf14AXJrBua14ZsJPYRY2No7c5QXZC47FTcB6ciaHF3AN6AwhCtgt1VemriK6HD6L_5LBFRc";
@@ -27,6 +33,12 @@ public class RecognitionService {
 		private static String aamBaseUrl = "http://capitalgroup.demdex.net/event?";
 		private static String sfdcStr = " has attended our booth in the Morningstart Investment conference requesting additional information about ";
 		
+		LambdaLogger logger;
+		
+		public RecognitionService(Context context) {
+	    	logger = context.getLogger();
+		}
+		
 		private String invokeSFDC(String name, String topic) throws IOException {
 			String noticeStr = name + sfdcStr + topic;
 			JSONObject json = new JSONObject();
@@ -35,7 +47,7 @@ public class RecognitionService {
 			json.put("Start_Date__c", "2018-08-23");
 			String jsonStr = json.toString();
 			
-			System.out.println("JSON=" + json.toJSONString());
+			logger.log("[" + className + ".invokeSFDC] JSON=" + json.toJSONString());
 			// String json = "{\"Active__c\" : \"true\",\"Description__c\" : \"Test6\",\"Start_Date__c\" : \"2018-08-23\"}";
 			
 			URL url = new URL(sfdcUrl);
@@ -68,14 +80,14 @@ public class RecognitionService {
 			if (topic.equalsIgnoreCase("FID")) sidStr = sid + "," + fid;
 			String aamUrl = aamBaseUrl + ldn_uuid + sidStr;
 			
-			System.out.println("aamUrl=" + aamUrl);
+			logger.log("[" + className + ".invokeAAM] aamUrl=" + aamUrl);
 			
 			URL url = new URL(aamUrl);
 			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 			conn.setRequestMethod("GET");
 
 			int responseCode = conn.getResponseCode();
-			System.out.println("Response Code = " + responseCode);
+			logger.log("[" + className + ".invokeAAM] Response Code = " + responseCode);
 			
 			BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
 			String inputLine;
@@ -85,7 +97,7 @@ public class RecognitionService {
 				response.append(inputLine);
 			}
 			in.close();
-			System.out.println(response.toString());
+			logger.log("[" + className + ".invokeAAM] " + response.toString());
 			return response.toString();		
 		}
 		
@@ -102,7 +114,7 @@ public class RecognitionService {
 	
 		      if (resultSet.next()) {
 		          lastName = resultSet.getObject("LName").toString();
-		          System.out.println(lastName);
+		          logger.log("[" + className + ".inYourFace] " + lastName);
 		        }
 		      if (lastName.length() > 0) {
 		    	  invokeSFDC(lastName, topic);

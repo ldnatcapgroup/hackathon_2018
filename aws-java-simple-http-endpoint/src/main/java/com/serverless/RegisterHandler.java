@@ -20,8 +20,9 @@ public class RegisterHandler implements RequestHandler<RegistrationInfo, Registr
         //s3image.listKnownImages();
         
         RekognitionService rekognition = new RekognitionService(context);
-        String matchedImagePath = rekognition.compareRegistrationImage(request.photoName, request.matchPercent == null ? 70F : request.matchPercent);
+        String matchedImagePath = rekognition.compareRegistrationImage(request.photoName, request.matchPercent == null ? 60F : request.matchPercent);
         boolean foundImage = false;
+        String lamsResponse = "";
         
         if (!"".equals(matchedImagePath)) {
         	logger.log(String.format("[%s.handleRequest]: FOUND [%s] in known users at [%s]", className, request.photoName, matchedImagePath));
@@ -29,6 +30,12 @@ public class RegisterHandler implements RequestHandler<RegistrationInfo, Registr
         	
         	
         	// Call Lam's service with matched photo name after last slash
+        	RecognitionService lamsService = new RecognitionService(context);
+        	//lamsResponse = 
+        			lamsService.inYourFace(matchedImagePath, request.topic);
+        			
+        			logger.log(String.format("[%s.handleRequest]: called LAM's service", className));
+        	
         	
         	// LDN returns some DB ID 
         }
